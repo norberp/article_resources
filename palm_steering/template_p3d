@@ -1,0 +1,124 @@
+!-------------------------------------------------------------------------------
+!-- INITIALIZATION PARAMETER NAMELIST
+!   Documentation: https://palm.muk.uni-hannover.de/trac/wiki/doc/app/inipar
+!-------------------------------------------------------------------------------
+&initialization_parameters
+!
+!-- grid parameters
+!-------------------------------------------------------------------------------
+    nx                         = p3d_nx, ! Number of gridboxes in x-direction (nx+1)
+    ny                         = p3d_ny, ! Number of gridboxes in y-direction (ny+1)
+    nz                         = p3d_nz, ! Number of gridboxes in z-direction (nz)
+
+    dx                         = p3d_dx, ! Size of single gridbox in x-direction
+    dy                         = p3d_dy, ! Size of single gridbox in y-direction
+    dz                         = p3d_dz, ! Size of single gridbox in z-direction
+
+    dz_stretch_level           = 240.0, ! Height (in m) where stretching starts
+    dz_stretch_factor          = 1.03,   ! dz(k+1) = dz(k) * dz_stretch_factor
+!
+!-- initialization
+!-------------------------------------------------------------------------------
+    initializing_actions       = 'set_constant_profiles', ! initial conditions
+
+    ug_surface                 = p3d_ug_surface, ! u-comp of geostrophic wind at surface
+    vg_surface                 = 0.0, ! v-comp of geostrophic wind at surface
+    roughness_length = p3d_roughness_length, !0.01
+
+
+    pt_surface                 = p3d_pt_surface, ! initial surface potential temp
+    pt_vertical_gradient       =    0.0,
+                                    1.0, ! piecewise temp gradients
+    pt_vertical_gradient_level =    0.0,
+                                  800.0, ! height level of temp gradients
+    surface_heatflux           = p3d_shf_F0, ! sensible heat flux at the bottom surface, will be overwritten by static driver file
+    bc_pt_b                    = 'neumann', ! boundary conditions, required with surface_heatflux
+
+
+    humidity                   = .TRUE.,
+    q_surface                 = p3d_q_surface,
+    q_vertical_gradient       = 0.0,
+                                -0.0005, ! taken from Matthias' examples
+    q_vertical_gradient_level =    0.0,
+                                  800.0, ! height level of temp gradients
+    surface_waterflux           = p3d_qsws_F0,
+    bc_q_b                    = 'neumann',
+
+
+!all this doesn't seem to have an effect, i.e. fluxes are still not interpreted as W/m2
+ !   flux_input_mode='kinematic',
+ !   flux_output_mode='dynamic',
+ !   approximation='anelastic',
+
+ !bc_lr='dirichlet/radiation',
+ !psolver='multigrid',
+
+
+!-- numerics
+!-------------------------------------------------------------------------------
+    fft_method                 = 'temperton-algorithm',   ! build-in fft method
+
+/ ! end of initialization parameter namelist
+
+!-------------------------------------------------------------------------------
+!-- RUNTIME PARAMETER NAMELIST
+!   Documentation: https://palm.muk.uni-hannover.de/trac/wiki/doc/app/d3par
+!-------------------------------------------------------------------------------
+&runtime_parameters
+!
+!-- run steering
+!-------------------------------------------------------------------------------
+    end_time                   = p3d_end_time, ! simulation time of the 3D model, 10800 in original test
+
+    create_disturbances        = .TRUE., ! randomly perturbate horiz. velocity
+    dt_disturb                 = 150.0,  ! interval for random perturbations
+    disturbance_energy_limit   = 0.01,   ! upper limit for perturbation energy
+
+    data_output_2d_on_each_pe  = .FALSE., ! don't do 2D output on each MPI rank
+
+!
+!-- data output
+!-------------------------------------------------------------------------------
+    netcdf_data_format         = 2, ! use NetCDF3
+
+    dt_run_control             = 0.0,    ! output interval for run control
+    dt_data_output             = 1800.0,  ! output interval for general data
+    dt_data_output_av          = 1800.0, ! output interval for averaged data
+    dt_dopr                    = 900.0,  ! output interval for profile data
+
+    data_output                = 'u_xy', 'u_xz', 'u_yz',
+                                 'v_xy', 'v_xz', 'v_yz',
+                                 'w_xy', 'w_xz', 'w_yz',
+                                 'theta_xy', 'theta_xz', 'theta_yz',
+                                 'q_xy', 'q_xz', 'q_yz',
+                                 'shf*_xy','qsws*_xy',
+
+                                 !'u', 'u_av', 'v', 'v_av', 'w', 'w_av', 'theta', 'theta_av',
+
+    data_output_pr             = 'wtheta', 'w"theta"', 'w*theta*',
+                                 'u','v','w','u*2','v*2','w*2',
+                                 '#theta', 'theta*2',
+                                 '#q', 'q*2',
+
+    section_xy                 = 20,-1, ! grid index for 2D XY cross sections
+    section_xz                 = 128,-1, ! grid index for 2D XZ cross sections
+    section_yz                 = 128,-1,
+
+    averaging_interval         = 900.0, ! averaging interval general data
+    dt_averaging_input         = 10.0,  ! averaging general data sampling rate
+
+    averaging_interval_pr      = 600.0, ! averaging interval profile data
+    dt_averaging_input_pr      = 10.0,  ! averaging profile data sampling rate
+
+    dt_domask              = 1.0, ! used to be 0.000001,
+    
+    data_output_masks(1,:) = 'u','v','w','theta','q',  !
+    
+    mask_x_loop(1,:) = p3d_mask_x_min, p3d_mask_x_max, 20.0, !used to be p3d_dx,
+    mask_y_loop(1,:) = p3d_mask_y_min, p3d_mask_y_max, 20.0, !used to be p3d_dy,
+    mask_z_loop(1,:) = p3d_mask_z_min, p3d_mask_z_max, 10.0, !used to be p3d_dz,  !these limits here define where drones are allowed to go
+
+    skip_time_domask = p3d_start_time,   !7200sec=2hrs  9000. in origianl tests. should be releated to avper and end_time
+
+/ ! end of runtime parameter namelist
+
